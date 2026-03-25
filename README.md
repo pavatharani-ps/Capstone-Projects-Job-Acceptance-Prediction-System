@@ -141,12 +141,3 @@ streamlit run stream.py
 * Interactive dashboard with KPI cards and analytics
 
 ---
-
-## 🚀 Future Enhancements
-
-* Add real-time prediction form
-* Deploy on cloud (Streamlit Cloud / AWS)
-* Advanced visualizations
-* Model explainability (SHAP)
-
----

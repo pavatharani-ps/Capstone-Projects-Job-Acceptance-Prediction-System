@@ -79,39 +79,165 @@ with st.spinner("Loading data and training models... ⏳"):
 # ---------------- SIDEBAR ----------------
 page = st.sidebar.radio(
     "Navigation",
-    ["🔮 Prediction", "📊 Model Comparison", "📄 Classification Report", "📈 EDA"]
+    ["📊 KPI Dashboard","🔮 Prediction", "📊 Model Comparison", "📄 Classification Report", "📈 EDA"]
 )
 
+# =========================================================
+# 📊 KPI DASHBOARD
+# =========================================================
+if page == "📊 KPI Dashboard":
+
+    # st.header("📊 Key Performance Indicators")
+
+    # -------- FILTERS --------
+    st.sidebar.subheader("🔍 KPI Filters")
+
+    min_exp, max_exp = st.sidebar.slider(
+        "Experience Range", 0, 10, (0, 5)
+    )
+
+    min_skills = st.sidebar.slider(
+        "Minimum Skills Match %", 0, 100, 50
+    )
+
+    # -------- APPLY FILTER --------
+    filtered_df = df[
+        (df["years_of_experience"] >= min_exp) &
+        (df["years_of_experience"] <= max_exp) &
+        (df["skills_match_percentage"] >= min_skills)
+    ]
+
+    # ================= KPI SECTION =================
+
+    st.subheader("📌 Key Performance Indicators")
+
+    # ---------------- KPI Calculations ----------------
+    total = len(df)
+
+    placed = (df["status"] == 1).sum()
+    not_placed = (df["status"] == 0).sum()
+
+    placement_rate = (placed / total) * 100
+
+    # Job Acceptance Rate
+    job_acceptance_rate = placement_rate
+
+    # Average Scores
+    avg_interview = df["technical_score"].mean()
+    avg_skills = df["skills_match_percentage"].mean()
+
+    # Offer Dropout Rate
+    offer_dropout = (
+        (df["status"] == 0).sum() / total
+    ) * 100
+
+    # High-Risk Candidates
+    # Example: low technical + low skills
+    high_risk = df[
+        (df["technical_score"] < 40) &
+        (df["skills_match_percentage"] < 40)
+    ]
+
+    high_risk_percent = (len(high_risk) / total) * 100
+
+
+    # ================= DISPLAY KPIs =================
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("👥 Total Candidates", total)
+
+    col2.metric(
+        "📈 Placement Rate",
+        f"{placement_rate:.2f}%"
+    )
+
+    col3.metric(
+        "💼 Job Acceptance Rate",
+        f"{job_acceptance_rate:.2f}%"
+    )
+
+    col4.metric(
+        "🎯 Avg Interview Score",
+        f"{avg_interview:.2f}"
+    )
+
+
+    # ---------------- SECOND ROW ----------------
+
+    col5, col6, col7 = st.columns(3)
+
+    col5.metric(
+        "🧠 Avg Skills Match %",
+        f"{avg_skills:.2f}"
+    )
+
+    col6.metric(
+        "🚪 Offer Dropout Rate",
+        f"{offer_dropout:.2f}%"
+    )
+
+    col7.metric(
+        "⚠ High-Risk Candidates %",
+        f"{high_risk_percent:.2f}%"
+    )
+    # -------- OPTIONAL CHART --------
+    st.subheader("📊 Placement Distribution")
+
+    chart_df = pd.DataFrame({
+        "Category": ["Placed", "Not Placed"],
+        "Count": [placed, not_placed]
+    })
+
+    st.bar_chart(chart_df.set_index("Category"))
 # =========================================================
 # 🔮 PREDICTION
 # =========================================================
 if page == "🔮 Prediction":
 
-    st.header("🔮 Employee Fit Prediction")
+    st.header("🔮 Employee Prediction (10+ Features)")
 
-    skills = st.slider("Skills Match %", 0, 100, 50)
+    # -------- INPUTS --------
+    age = st.slider("Age", 18, 60, 25)
+    ssc = st.slider("SSC %", 0, 100, 60)
+    hsc = st.slider("HSC %", 0, 100, 60)
+    degree = st.slider("Degree %", 0, 100, 60)
     tech = st.slider("Technical Score", 0, 100, 50)
     aptitude = st.slider("Aptitude Score", 0, 100, 50)
-    exp = st.number_input("Years of Experience", 0, 10, 1)
+    comm = st.slider("Communication Score", 0, 100, 50)
+    skills = st.slider("Skills Match %", 0, 100, 50)
+    exp = st.number_input("Experience (Years)", 0, 10, 1)
+    cert = st.number_input("Certifications", 0, 10, 1)
 
-    input_dict = {col: 0 for col in X.columns}
+    # -------- CREATE INPUT DATA --------
+    input_data = {col: 0 for col in X.columns}
 
-    input_dict["skills_match_percentage"] = skills
-    input_dict["technical_score"] = tech
-    input_dict["aptitude_score"] = aptitude
-    input_dict["years_of_experience"] = exp
+    # Fill important features
+    input_data["age_years"] = age
+    input_data["ssc_percentage"] = ssc
+    input_data["hsc_percentage"] = hsc
+    input_data["degree_percentage"] = degree
+    input_data["technical_score"] = tech
+    input_data["aptitude_score"] = aptitude
+    input_data["communication_score"] = comm
+    input_data["skills_match_percentage"] = skills
+    input_data["years_of_experience"] = exp
+    input_data["certifications_count"] = cert
 
-    input_df = pd.DataFrame([input_dict])
+    input_df = pd.DataFrame([input_data])
 
+    # ⭐ IMPORTANT FIX (THIS SOLVES YOUR ERROR)
+    input_df = input_df.reindex(columns=X.columns, fill_value=0)
+
+    # -------- PREDICT --------
     if st.button("Predict"):
 
-        with st.spinner("Predicting... 🤖"):
-            result = best_model.predict(input_df)[0]
+        result = best_model.predict(input_df)[0]
 
-        st.subheader(f"Best Model Used: {best_model_name}")
+        st.subheader(f"Best Model: {best_model_name}")
 
         if result == 1:
-            st.success("✅ Employee is FIT for job")
+            st.success("✅ Employee is FIT")
         else:
             st.error("❌ Employee is NOT FIT")
 
@@ -182,3 +308,4 @@ elif page == "📈 EDA":
         sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax2)
 
         st.pyplot(fig2)
+        
